@@ -1,36 +1,59 @@
-<?php 
+<?php
 
-//This one is a command line utility to pull key frames from your input directory directory, into your prep directory,
-//where you can use stable diffusion to redraw said frames, which go in your output directory. 
-
-//This file does not execute stable diffusion.
-//It's just a pre-processor. Relax, okay?
-
-$files = __DIR__. '/src'; 	//the raw images from your video sequence
-$mover = __DIR__. '/prep'; 	//the ones you want SD to redraw
-$deviation = 150; 			//how often you want sd to redraw one of these images 
-$list = scandir($files);
-
-$filesToMove = [];
-$fileCount = count($list);
-
-$inc = 0;
-
-foreach ($list as  $file){
-	if(strlen($file) > 2){
-		if($inc++ % $deviation == 0){ //always picks the first file, this is intentional
-			if( file_exists( $files . '/'.$file) && strlen($file) > 3){
-				$filesToMove[] = $file;
-				if(copy($files.'/'.$file, $mover. '/'.$file)){
-					echo "Success! We've copied {$files}/($file} into {$mover}/{$file}\n";
-				}
-				else{
-					echo "Could not move {$files}/($file}\n";
-				}
-			}
-		}
-	}
-	
+class KeyFrameProcessor {
+    private string $srcDirectory;
+    private string $prepDirectory;
+    private int $deviation;
+    
+    public function __construct(string $srcDirectory, string $prepDirectory, int $deviation) {
+        $this->srcDirectory = $srcDirectory;
+        $this->prepDirectory = $prepDirectory;
+        $this->deviation = $deviation;
+    }
+    
+    public function processFiles() {
+        if (!$this->isDirectoryExists($this->srcDirectory) || !$this->isDirectoryExists($this->prepDirectory)) {
+            echo "Source or output directory doesn't exist. Please check the directory paths and try again.";
+            return;
+        }
+        
+        $fileList = scandir($this->srcDirectory);
+        
+        $filesToMove = [];
+        $fileCount = count($fileList) ?? 0;
+        
+        $inc = 0;
+        
+        foreach ($fileList as $file) {
+            if (strlen($file) > 2) {
+                if ($inc++ % $this->deviation === 0) { // always picks the first file, this is intentional
+                    if ($this->isDirectoryExists($this->srcDirectory . '/' . $file) && strlen($file) > 3) {
+                        $filesToMove[] = $file;
+                        if ($this->copyFile($file)) {
+                            echo "Success! We've copied {$this->srcDirectory}/{$file} into {$this->prepDirectory}/{$file}\n";
+                        } else {
+                            echo "Could not move {$this->srcDirectory}/{$file}\n";
+                        }
+                    }
+                }
+            }
+        }
+        
+        echo "ta da!\n\n";
+    }
+    
+    private function copyFile(string $file): bool {
+        return copy($this->srcDirectory . '/' . $file, $this->prepDirectory . '/' . $file);
+    }
+    
+    private function isDirectoryExists(string $directory): bool {
+        return is_dir($directory);
+    }
 }
 
-echo "ta da!\n\n";
+$src = __DIR__ . '/src';
+$prep = __DIR__ . '/prep';
+$deviation = 150;
+
+$processor = new KeyFrameProcessor($src, $prep, $deviation);
+$processor->processFiles();
